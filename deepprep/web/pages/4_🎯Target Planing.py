@@ -114,6 +114,7 @@ elif device == "CPU":
 else:
     device_cmd = f' --device auto'
 
+
 def run_command(cmd):
     process = subprocess.Popen(
         cmd,
@@ -136,17 +137,18 @@ def run_command(cmd):
 
     process.wait()
 
+
 def run_command_with_display(cmd, max_lines=50):
     """
     Run command and display latest output in a scrolling manner
     max_lines: Maximum number of lines to display, default 50 lines
     """
     import time
-    
+
     # Create an empty container for displaying output
     output_container = st.empty()
     output_lines = []
-    
+
     process = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
@@ -156,25 +158,25 @@ def run_command_with_display(cmd, max_lines=50):
         bufsize=1,
         universal_newlines=True
     )
-    
+
     while True:
         line = process.stdout.readline()
         if line == "" and process.poll() is not None:
             break
         if line:
             output_lines.append(line.rstrip())
-            
+
             # Keep only the latest max_lines
             if len(output_lines) > max_lines:
                 output_lines = output_lines[-max_lines:]
-            
+
             # Update display content
             display_text = '\n'.join(output_lines)
             output_container.code(display_text, language='bash')
-            
+
             # Brief delay to avoid excessive updates
             time.sleep(0.1)
-    
+
     # Final check for stderr
     stderr = process.stderr
     if stderr:
@@ -185,9 +187,9 @@ def run_command_with_display(cmd, max_lines=50):
                 output_lines = output_lines[-max_lines:]
             display_text = '\n'.join(output_lines)
             output_container.code(display_text, language='bash')
-    
+
     process.wait()
-    
+
     # If process returns non-zero code, display error message
     if process.returncode != 0:
         output_lines.append(f"Process exit code: {process.returncode}")
@@ -196,12 +198,13 @@ def run_command_with_display(cmd, max_lines=50):
         st.error(f"Command execution failed, exit code: {process.returncode}")
     else:
         st.success("Command executed successfully!")
-    
+
     return process.returncode == 0
+
 
 # output
 preprocess_dir = os.path.join(output_dir, 'Preprocess')
-preprocess_cmd = f"{bids_dir} {preprocess_dir} participant {device_cmd} --fs_license_file {freesurfer_license_file} {participant_label_cmd} --bold_task_type 'rest' --bold_surface_spaces 'fsaverage6' --skip_frame {bold_skip_frame} --bandpass {bold_bandpass} --bold_confounds --skip_bids_validation --resume"
+preprocess_cmd = f"{bids_dir} {preprocess_dir} participant {device_cmd} --fs_license_file {freesurfer_license_file} {participant_label_cmd} --bold_task_type 'rest' --bold_surface_spaces 'fsaverage6' --bold_volume_space 'MNI152NLin6Asym' --bold_volume_res '02' --skip_frame {bold_skip_frame} --bandpass {bold_bandpass} --bold_confounds --skip_bids_validation --resume"
 
 # input
 preprocess_bold_dir = os.path.join(preprocess_dir, 'BOLD')
@@ -257,5 +260,6 @@ if st.button("Run", disabled=commond_error):
                 run_command_with_display(target_command, max_display_lines)
                 run_command_with_display(target_qc_command, max_display_lines)
         import time
+
         time.sleep(2)
     st.success("Done!")

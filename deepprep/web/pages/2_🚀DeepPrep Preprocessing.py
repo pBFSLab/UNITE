@@ -21,8 +21,10 @@ The DeepPrep workflow takes the directory of the dataset to be processed as inpu
 """
 )
 
-selected_option = st.radio("select a process: ", ("All", "T1w only", "BOLD only"), horizontal=True, help="'All' preprocess both T1w and BOLD data, 'T1w only' preprocess T1w data, 'BOLD only' preprocess BOLD data")
-device = st.radio("select a device: ", ("auto", "GPU", "CPU"), horizontal=True, help="Specifies the device. The default is auto, which automatically selects a device.")
+selected_option = st.radio("select a process: ", ("All", "T1w only", "BOLD only"), horizontal=True,
+                           help="'All' preprocess both T1w and BOLD data, 'T1w only' preprocess T1w data, 'BOLD only' preprocess BOLD data")
+device = st.radio("select a device: ", ("auto", "GPU", "CPU"), horizontal=True,
+                  help="Specifies the device. The default is auto, which automatically selects a device.")
 
 st.write(f"Preprocess '{selected_option}'", f"on the '{device}' device.")
 
@@ -30,7 +32,8 @@ deepprep_cmd = ''
 docker_cmd = 'docker run -it --rm'
 commond_error = False
 
-bids_dir = st.text_input("BIDS Path:", help="refers to the directory of the input dataset, which is required to be in BIDS format.")
+bids_dir = st.text_input("BIDS Path:",
+                         help="refers to the directory of the input dataset, which is required to be in BIDS format.")
 if not bids_dir:
     st.error("The BIDS Path must be input!")
     deepprep_cmd += ' {bids_dir}'
@@ -73,7 +76,8 @@ if selected_option == "BOLD only":
         st.error("The Recon Result Path does not exist!")
         commond_error = True
 else:
-    subjects_dir = st.text_input("Recon Result Path (optional)", help="the output directory for the Recon files, default is <output_dir>/Recon.")
+    subjects_dir = st.text_input("Recon Result Path (optional)",
+                                 help="the output directory for the Recon files, default is <output_dir>/Recon.")
 
 if subjects_dir:
     if not subjects_dir.startswith('/'):
@@ -85,7 +89,8 @@ if subjects_dir:
     else:
         deepprep_cmd += f' --subjects_dir {subjects_dir}'
 
-freesurfer_license_file = st.text_input("FreeSurfer license file path", value='/opt/freesurfer/license.txt', help="FreeSurfer license file path. It is highly recommended to replace the license.txt path with your own FreeSurfer license! You can get it for free from https://surfer.nmr.mgh.harvard.edu/registration.html")
+freesurfer_license_file = st.text_input("FreeSurfer license file path", value='/opt/freesurfer/license.txt',
+                                        help="FreeSurfer license file path. It is highly recommended to replace the license.txt path with your own FreeSurfer license! You can get it for free from https://surfer.nmr.mgh.harvard.edu/registration.html")
 if not freesurfer_license_file.startswith('/'):
     st.error("The path must be an absolute path starts with '/'.")
     commond_error = True
@@ -96,7 +101,8 @@ else:
     deepprep_cmd += f' --fs_license_file {freesurfer_license_file}'
 
 if selected_option != "T1w only":
-    bold_task_type = st.text_input("BOLD task type", placeholder="i.e. rest, motor, 'rest motor'", help="the task label of BOLD images (i.e. rest, motor, 'rest motor').")
+    bold_task_type = st.text_input("BOLD task type", placeholder="i.e. rest, motor, 'rest motor'",
+                                   help="the task label of BOLD images (i.e. rest, motor, 'rest motor').")
     if not bold_task_type:
         st.error("The BOLD task type must be input!")
         commond_error = True
@@ -111,18 +117,21 @@ if selected_option != "T1w only":
         deepprep_cmd += ' --bold_cifti'
     else:
         surface_spaces = st.multiselect("select the surface spaces: (optional)",
-            ["fsnative", "fsaverage6", "fsaverage5", "fsaverage4", "fsaverage3"],
-            ["fsaverage6"],
-            help="select the surface spaces from FreeSurfer"
-        )
+                                        ["fsnative", "fsaverage6", "fsaverage5", "fsaverage4", "fsaverage3"],
+                                        ["fsaverage6"],
+                                        help="select the surface spaces from FreeSurfer"
+                                        )
         if surface_spaces:
             surface_spaces = ' '.join(surface_spaces)
             deepprep_cmd += f" --bold_surface_spaces '{surface_spaces}'"
 
-        bold_volume_space = st.selectbox("select a normalized volume space: (optional)", ("MNI152NLin6Asym", "MNI152NLin2009cAsym", "None"), help="select a volumetric space from TemplateFlow")
+        bold_volume_space = st.selectbox("select a normalized volume space: (optional)",
+                                         ("MNI152NLin6Asym", "MNI152NLin2009cAsym", "None"),
+                                         help="select a volumetric space from TemplateFlow")
         deepprep_cmd += f' --bold_volume_space {bold_volume_space} --bold_volume_res 02'
 
-    bold_skip_frame = st.text_input("skip n frames of BOLD data", value="2", help="skip n frames of BOLD fMRI; the default is `2`.")
+    bold_skip_frame = st.text_input("skip n frames of BOLD data", value="2",
+                                    help="skip n frames of BOLD fMRI; the default is `2`.")
     if not bold_skip_frame:
         deepprep_cmd += f' --bold_skip_frame 2'
     else:
@@ -169,7 +178,8 @@ else:
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    skip_bids_validation = st.checkbox("skip_bids_validation", value=True, help="with this flag, the BIDS format validation step of the input dataset will be skipped.")
+    skip_bids_validation = st.checkbox("skip_bids_validation", value=True,
+                                       help="with this flag, the BIDS format validation step of the input dataset will be skipped.")
     if skip_bids_validation:
         deepprep_cmd += ' --skip_bids_validation'
 with col2:
@@ -207,13 +217,80 @@ def run_command(cmd):
     process.wait()
 
 
+def run_command_with_display(cmd, max_lines=50):
+    """
+    Run command and display latest output in a scrolling manner
+    max_lines: Maximum number of lines to display, default 50 lines
+    """
+    import time
+
+    # Create an empty container for displaying output
+    output_container = st.empty()
+    output_lines = []
+
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,  # Redirect stderr to stdout
+        text=True,
+        shell=True,
+        bufsize=1,
+        universal_newlines=True
+    )
+
+    while True:
+        line = process.stdout.readline()
+        if line == "" and process.poll() is not None:
+            break
+        if line:
+            output_lines.append(line.rstrip())
+
+            # Keep only the latest max_lines
+            if len(output_lines) > max_lines:
+                output_lines = output_lines[-max_lines:]
+
+            # Update display content
+            display_text = '\n'.join(output_lines)
+            output_container.code(display_text, language='bash')
+
+            # Brief delay to avoid excessive updates
+            time.sleep(0.1)
+
+    # Final check for stderr
+    stderr = process.stderr
+    if stderr:
+        remaining_stderr = stderr.read()
+        if remaining_stderr:
+            output_lines.append(f"ERROR: {remaining_stderr}")
+            if len(output_lines) > max_lines:
+                output_lines = output_lines[-max_lines:]
+            display_text = '\n'.join(output_lines)
+            output_container.code(display_text, language='bash')
+
+    process.wait()
+
+    # If process returns non-zero code, display error message
+    if process.returncode != 0:
+        output_lines.append(f"Process exit code: {process.returncode}")
+        display_text = '\n'.join(output_lines)
+        output_container.code(display_text, language='bash')
+        st.error(f"Command execution failed, exit code: {process.returncode}")
+    else:
+        st.success("Command executed successfully!")
+
+    return process.returncode == 0
+
+
 st.write(f'-----------  ------------')
 st.write(f'{docker_cmd} pbfslab/deepprep {deepprep_cmd}')
+max_display_lines = 200
 if st.button("Run", disabled=commond_error):
     with st.spinner('Waiting for the process to finish, please do not leave this page...'):
         command = [f"/opt/DeepPrep/deepprep/preprocess.sh {deepprep_cmd}"]
         with st.expander("------------ running log ------------"):
-            st.write_stream(run_command(command))
+            # st.write_stream(run_command(command))
+            run_command_with_display(command, max_display_lines)
         import time
+
         time.sleep(2)
     st.success("Done!")
